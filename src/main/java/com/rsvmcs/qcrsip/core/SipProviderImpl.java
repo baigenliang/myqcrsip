@@ -10,10 +10,7 @@ import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.*;
 
-/**
- * 使用 ConnectionManager 进行 TCP 发包（异步），UDP 用 DatagramSocket。
- * deliverRawMessage 会被 SipStackImpl 的监听线程调用，把 raw bytes 解析并放入 EventScanner。
- */
+
 public class SipProviderImpl implements SipProvider {
     private final SipStackImpl stack;
     private final ListeningPoint lp;
@@ -78,6 +75,7 @@ public class SipProviderImpl implements SipProvider {
             // SIPMessage → 获取第一条 Via 头
             String via = msg.getHeader("Via");
             String transport = (via != null && via.toUpperCase().contains("UDP")) ? "UDP" : "TCP";
+            return  transport;
         } catch (Exception e) {
             // 忽略解析异常
         }

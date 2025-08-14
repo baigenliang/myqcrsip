@@ -5,6 +5,7 @@ import com.rsvmcs.qcrsip.core.SipProviderImpl;
 import com.rsvmcs.qcrsip.core.SipStackImpl;
 import com.rsvmcs.qcrsip.entity.*;
 
+import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
 public class DemoMainPro {
@@ -13,6 +14,7 @@ public class DemoMainPro {
         Thread es = new Thread(scanner, "EventScanner"); es.start();
 
         SipStack stack = new SipStackImpl(scanner);
+
 
         // 建立 TCP & UDP 监听
         ListeningPoint tcpLP = stack.createListeningPoint("0.0.0.0", 5060, "TCP");
@@ -72,23 +74,45 @@ public class DemoMainPro {
         udpProvider.addSipListener(appListener);
 
         // ==== 主动发送一个 TCP INVITE（目标按你设备改 host/port）====
+        InetSocketAddress remoteAddr = new InetSocketAddress("10.120.5.185", 5061);
         SipRequest inviteTcp = createInvite("sip:10.120.5.185:5061", 101, "GetCuUserId");
-        tcpProvider.sendRequest(inviteTcp);
+       // tcpProvider.sendRequest(inviteTcp);
+        tcpProvider.sendRequest(inviteTcp,remoteAddr);
 
         // ==== 主动发送一个 UDP INVITE ====
-        SipRequest inviteUdp = createInvite("sip:10.120.5.185:5061", 102, "CuRegister");
-        udpProvider.sendRequest(inviteUdp);
+        SipRequest inviteUdp = createInviteUDP("sip:10.120.5.185:5062", 102, "CuRegister");
+        InetSocketAddress remoteAddr2 = new InetSocketAddress("10.120.5.185", 5062);
+        udpProvider.sendRequest(inviteUdp,remoteAddr2);
 
         // 运行一段时间观察
         TimeUnit.MINUTES.sleep(10);
-        ((SipStackImpl)stack).stop();
-        scanner.stop();
+//        ((SipStackImpl)stack).stop();
+//        scanner.stop();
     }
 
     private static SipRequest createInvite(String reqUri, long cseq, String cmd){
         RequestLine rl = new RequestLine("INVITE", reqUri, "SIP/2.0");
         SipRequest req = new SipRequest(rl);
         req.setHeader("Via", reqUri.contains("UDP") ? "SIP/2.0/UDP 127.0.0.1" : "SIP/2.0/TCP 127.0.0.1");
+        req.setHeader("To", "<sip:to@local>");
+        req.setHeader("From", "<sip:from@local>");
+        req.setHeader("Max-Forwards", "70");
+        req.setHeader("Call-ID", "call-12345");
+        req.setHeader("CSeq", cseq + " INVITE");
+        req.setHeader("Content-Type", "RVSS/xml");
+        String xml = "<?xml version=\"1.0\" encoding=\"GB2312\" standalone=\"yes\"?>\r\n"
+                + "<request command=\"" + cmd + "\">\r\n"
+                + "  <parameters>\r\n"
+                + "    <cuUserName>sbqx</cuUserName>\r\n"
+                + "  </parameters>\r\n"
+                + "</request>";
+        req.setRawContent(xml.getBytes(SIPMessage.BODY_CHARSET));
+        return req;
+    }
+    private static SipRequest createInviteUDP(String reqUri, long cseq, String cmd){
+        RequestLine rl = new RequestLine("INVITE", reqUri, "SIP/2.0");
+        SipRequest req = new SipRequest(rl);
+        req.setHeader("Via", "SIP/2.0/UDP 127.0.0.1");
         req.setHeader("To", "<sip:to@local>");
         req.setHeader("From", "<sip:from@local>");
         req.setHeader("Max-Forwards", "70");
