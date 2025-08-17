@@ -1,9 +1,9 @@
 package com.rsvmcs.qcrsip.core;
 
 
-import com.rsvmcs.qcrsip.core.stack.TCPMessageProcessor;
-import com.rsvmcs.qcrsip.core.stack.UDPMessageProcessor;
-import com.rsvmcs.qcrsip.entity.*;
+import com.rsvmcs.qcrsip.core.io.MessageProcessor;
+import com.rsvmcs.qcrsip.core.io.TCPMessageProcessor;
+import com.rsvmcs.qcrsip.core.io.UDPMessageProcessor;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,46 +18,54 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 
 public class SipStackImpl implements SipStack {
-
-    private final Map<String, ListeningPoint> lps = new ConcurrentHashMap<>();
-    private final Map<String, SipProviderImpl> providers = new ConcurrentHashMap<>();
-    private final List<TCPMessageProcessor> tcpProcessors = Collections.synchronizedList(new ArrayList<>());
-    private final List<UDPMessageProcessor> udpProcessors = Collections.synchronizedList(new ArrayList<>());
-    private final EventScanner scanner;
-
-    public SipStackImpl(EventScanner scanner){ this.scanner = scanner; }
+    private final Map<ListeningPoint, Object> processors = new ConcurrentHashMap<>();
+    private volatile boolean running = false;
 
     @Override
-    public ListeningPoint createListeningPoint(String ip, int port, String transport){
-        ListeningPoint lp = new ListeningPoint(ip, port, transport);
-        lps.put(lp.key(), lp);
-        return lp;
+    public ListeningPoint createListeningPoint(String ip, int port, String transport) {
+        return new ListeningPoint(ip, port, transport);
     }
 
     @Override
     public SipProvider createSipProvider(ListeningPoint lp) throws Exception {
-        SipProviderImpl p = new SipProviderImpl(this, lp, scanner);
-        providers.put(lp.key(), p);
-        // 立即创建对应的接收器
-        if ("TCP".equalsIgnoreCase(lp.getTransport())) {
-            TCPMessageProcessor proc = new TCPMessageProcessor(p);
-            tcpProcessors.add(proc);
-            proc.start(lp.getIp(), lp.getPort());
-        } else {
-            UDPMessageProcessor proc = new UDPMessageProcessor(p);
-            udpProcessors.add(proc);
-            proc.start(lp.getIp(), lp.getPort());
-        }
-        return p;
+        if (!running) throw new IllegalStateException("Start SipStack before createSipProvider()");
+        if (lp == null) throw new IllegalArgumentException("ListeningPoint is null");
+        Object proc = processors.computeIfAbsent(lp, k -> {
+            try {
+                if ("TCP".equalsIgnoreCase(lp.getTransport())) {
+                    TCPMessageProcessor p = new TCPMessageProcessor(lp);
+                    p.start();
+                    return p;
+                } else if ("UDP".equalsIgnoreCase(lp.getTransport())) {
+                    UDPMessageProcessor p = new UDPMessageProcessor(lp);
+                    p.start();
+                    return p;
+                } else {
+                    throw new IllegalArgumentException("Unsupported transport: " + lp.getTransport());
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+        return new SipProviderImpl(lp, this, proc);
     }
 
     @Override
-    public void start(){ /* 处理器在 createSipProvider 时已经启动 */ }
+    public void start() { running = true; }
 
     @Override
     public void stop() {
-        tcpProcessors.forEach(TCPMessageProcessor::stop);
-        udpProcessors.forEach(UDPMessageProcessor::stop);
-        providers.values().forEach(SipProviderImpl::shutdown);
+        running = false;
+        processors.values().forEach(p -> {
+            try {
+                if (p instanceof TCPMessageProcessor) ((TCPMessageProcessor) p).stop();
+                if (p instanceof UDPMessageProcessor) ((UDPMessageProcessor) p).stop();
+            } catch (Exception ignored) {}
+        });
+        processors.clear();
+    }
+
+    /* package */ Object getProcessor(ListeningPoint lp) {
+        return processors.get(lp);
     }
 }

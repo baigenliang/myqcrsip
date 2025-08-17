@@ -1,131 +1,148 @@
 package com.rsvmcs.qcrsip.test;
 
-import com.rsvmcs.qcrsip.core.EventScanner;
-import com.rsvmcs.qcrsip.core.SipProviderImpl;
-import com.rsvmcs.qcrsip.core.SipStackImpl;
-import com.rsvmcs.qcrsip.entity.*;
+import com.rsvmcs.qcrsip.core.*;
+import com.rsvmcs.qcrsip.core.events.RequestEvent;
+import com.rsvmcs.qcrsip.core.events.ResponseEvent;
+import com.rsvmcs.qcrsip.core.events.TimeoutEvent;
+import com.rsvmcs.qcrsip.core.model.*;
 
 import java.net.InetSocketAddress;
+import java.util.LinkedHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class DemoMainPro {
     public static void main(String[] args) throws Exception {
-        EventScanner scanner = new EventScanner();
-        Thread es = new Thread(scanner, "EventScanner"); es.start();
+//        SipStack stack = new SipStackImpl();
+//
+//        // 启动 TCP & UDP 监听（本机 127.0.0.1:5060）
+//        ListeningPoint tcpLP = stack.createListeningPoint("127.0.0.1", 5060, "TCP");
+//        ListeningPoint udpLP = stack.createListeningPoint("127.0.0.1", 5060, "UDP");
+//        SipProvider tcpProvider = stack.createSipProvider(tcpLP);
+//        SipProvider udpProvider = stack.createSipProvider(udpLP);
+//
+//        // 业务层 listener
+//        SipListener listener = new SipListener() {
+//            @Override
+//            public void processRequest(RequestEvent requestEvent) {
+//                System.out.println("[Biz] processRequest\n" + requestEvent.getRequest().encode());
+//                // 构造 200 OK 响应回发
+//                SipRequest req = requestEvent.getRequest();
+//                SipResponse resp = new SipResponse();
+//                resp.setResponseLine(new StatusLine("SIP/2.0", 200, "OK"));
+//                LinkedHashMap<String,String> h = new LinkedHashMap<>();
+//                h.put("Via", req.getHeader("Via"));
+//                h.put("To", req.getHeader("To"));
+//                h.put("From", req.getHeader("From"));
+//                h.put("Call-ID", req.getHeader("Call-ID"));
+//                h.put("CSeq", req.getHeader("CSeq"));
+//                h.put("Content-Type", "RVSS/xml");
+//                String body = "<?xml version=\"1.0\" encoding=\"GB2312\" standalone=\"yes\"?>\r\n" +
+//                        "<response command=\"Echo\"><result code=\"0\">ok</result><parameters/></response>";
+//                resp.setHeaders(h);
+//                resp.setBody(body.getBytes(SIPMessage.GB2312));
+//                try {
+//                    requestEvent.getProvider().sendResponse(resp);
+//                } catch (Exception e) { e.printStackTrace(); }
+//            }
+//            @Override public void processResponse(ResponseEvent responseEvent) {
+//                System.out.println("[Biz] processResponse\n" + responseEvent.getResponse().encode());
+//            }
+//            @Override public void processTimeout(TimeoutEvent timeoutEvent) {
+//                System.out.println("[Biz] timeout: " + timeoutEvent);
+//            }
+//        };
+//
+//        ((SipProviderImpl) tcpProvider).addSipListener(listener);
+//        ((SipProviderImpl) udpProvider).addSipListener(listener);
+//
+//        // 启动栈
+//        ((SipStackImpl) stack).startProvider(tcpProvider);
+//        ((SipStackImpl) stack).startProvider(udpProvider);
+//
+//        // 给自己发一个 TCP INVITE（演示主动发送 + 回收响应）
+//        SipRequest invite = new SipRequest();
+//        invite.setRequestLine(new RequestLine("INVITE", "sip:dummy SIP/2.0")); // URI 不作约束
+//        LinkedHashMap<String,String> headers = new LinkedHashMap<>();
+//        headers.put("Via", "SIP/2.0/TCP 127.0.0.1:5060");
+//        headers.put("To", "<sip:to@local>");
+//        headers.put("From", "<sip:from@local>");
+//        headers.put("Max-Forwards", "70");
+//        headers.put("Call-ID", "10001");
+//        headers.put("CSeq", "101 INVITE");
+//        headers.put("Content-Type", "RVSS/xml");
+//        invite.setHeaders(headers);
+//        String xml = "<?xml version=\"1.0\" encoding=\"GB2312\" standalone=\"yes\"?>\r\n" +
+//                "<request command=\"Ping\"><parameters/></request>";
+//        invite.setBody(xml.getBytes(SIPMessage.GB2312));
+//
+//        // 显式指定目标地址，不从 Request-URI 解析
+//       InetSocketAddress loop = new InetSocketAddress("10.120.5.185", 5061);
+//      ((SipProviderImpl) tcpProvider).sendRequest(invite, loop);
+//
+//        // 给自己发一个 UDP INVITE
+//        SipRequest inviteUdp = invite.cloneShallow();
+//        inviteUdp.getHeaders().put("Via", "SIP/2.0/UDP 127.0.0.1:5061");
+//         ((SipProviderImpl) udpProvider).sendRequest(inviteUdp, loop);
+//
+//        System.out.println("Demo running. Use tcp/udp tool to send to 127.0.0.1:5061.");
+//        Thread.sleep(20_000);
+//        ((SipStackImpl) stack).stopProvider(tcpProvider);
+//        ((SipStackImpl) stack).stopProvider(udpProvider);
 
-        SipStack stack = new SipStackImpl(scanner);
 
+        SipStack stack = new SipStackImpl();
+        stack.start();
+        ListeningPoint tcpLP = stack.createListeningPoint("127.0.0.1", 5060, "UDP");
+        SipProvider tcpProv = stack.createSipProvider(tcpLP);
 
-        // 建立 TCP & UDP 监听
-        ListeningPoint tcpLP = stack.createListeningPoint("0.0.0.0", 5060, "TCP");
-        ListeningPoint udpLP = stack.createListeningPoint("0.0.0.0", 5060, "UDP");
+// 业务监听器
+        tcpProv.addSipListener(new SipListener() {
+            @Override public void processRequest(RequestEvent e) {
+                System.out.println("[Biz] processRequest:\n" + e.getRequest().encode());
 
-        SipProviderImpl tcpProvider = (SipProviderImpl) stack.createSipProvider(tcpLP);
-        SipProviderImpl udpProvider = (SipProviderImpl) stack.createSipProvider(udpLP);
+                // 构造 200 OK
+                SipResponse ok = new SipResponse(new StatusLine("SIP/2.0",200,"OK"));
+                ok.setHeader("Via", e.getRequest().getHeader("Via"));
+                ok.setHeader("To",   e.getRequest().getHeader("To"));
+                ok.setHeader("From", e.getRequest().getHeader("From"));
+                ok.setHeader("Call-ID", e.getRequest().getHeader("Call-ID"));
+                ok.setHeader("CSeq", e.getRequest().getHeader("CSeq"));
+                ok.setHeader("Content-Type", "RVSS/xml");
+                String body = "<?xml version=\"1.0\" encoding=\"GB2312\"?>\r\n<response command=\"Ack\"><result code=\"0\">ok</result></response>";
+                ok.setBody(body.getBytes(SIPMessage.BODY_CHARSET));
 
-        // 业务层 listener
-        SipListener appListener = new SipListener() {
-            @Override
-            public void processRequest(RequestEvent requestEvent) {
-                SipRequest req = requestEvent.getRequest();
-                System.out.println("<<< Request received:\n" + req.encode());
+                // 沿原通道回发（TCP）
+                //if (e.getTcpChannel()!=null) ok.setReplyChannel(e.getTcpChannel());
+                // 如果是 UDP：
+                 ok.setUdpPeer(e.getUdpPeer());
 
-                // 自动返回 200 OK（保持相同 CSeq）
-                try {
-                    SipResponse ok = create200OkFrom(req, "GetCuUserId");
-                    requestEvent.getSourceProvider().sendResponse(ok);
-                    System.out.println(">>> 200 OK sent for CSeq=" + ok.getCSeqNumber());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                try { tcpProv.sendResponse(ok); } catch (Exception ex) { ex.printStackTrace(); }
             }
-
-            @Override
-            public void processResponse(ResponseEvent responseEvent) {
-                SipResponse resp = responseEvent.getResponse();
-                System.out.println("<<< Response received:\n" + resp.encode());
+            @Override public void processResponse(ResponseEvent responseEvent) {
+                System.out.println("[Biz] processResponse:\n" + responseEvent.getResponse().encode());
             }
-
-            @Override
-            public void processTimeout(TimeoutEvent timeoutEvent) {
-                System.out.println("!!! Timeout CSeq=" + timeoutEvent.getCseq());
+            @Override public void processTimeout(TimeoutEvent timeoutEvent) {
+                System.out.println("[Biz] timeout: " + timeoutEvent.getInfo());
             }
+        });
 
-            private SipResponse create200OkFrom(SipRequest req, String cmd){
-                long cseq = req.getCSeqNumber();
-                SipResponse resp = new SipResponse(new StatusLine("SIP/2.0", 200, "OK"));
-                resp.setHeader("Via", req.getHeader("Via"));
-                resp.setHeader("To", req.getHeader("To"));
-                resp.setHeader("From", req.getHeader("From"));
-                resp.setHeader("Call-ID", req.getHeader("Call-ID"));
-                resp.setHeader("CSeq", cseq + " INVITE");
-                resp.setHeader("Content-Type", "RVSS/xml");
-                String xml = "<?xml version=\"1.0\" encoding=\"GB2312\" standalone=\"yes\"?>\r\n"
-                        + "<response command=\"" + cmd + "\">\r\n"
-                        + "  <result code=\"0\">success</result>\r\n"
-                        + "  <parameters/>\r\n"
-                        + "</response>";
-                resp.setRawContent(xml.getBytes(SIPMessage.BODY_CHARSET));
-                return resp;
-            }
-        };
+// 等待对端连接/发包，然后演示主动发一个 INVITE
+        Thread.sleep(6500);
+        SipRequest req = new SipRequest(new RequestLine("INVITE","sip:127.0.0.1:5060","SIP/2.0"));
+        req.setHeader("Via","SIP/2.0/TCP 127.0.0.1");
+        req.setHeader("To","<sip:to@127.0.0.1>");
+        req.setHeader("From","<sip:from@127.0.0.1>");
+        req.setHeader("Call-ID","abc-123");
+        req.setHeader("CSeq","1 INVITE");
+        req.setHeader("Content-Type","RVSS/xml");
+        String xml = "<?xml version=\"1.0\" encoding=\"GB2312\"?><request command=\"Ping\"><parameters/></request>";
+        req.setBody(xml.getBytes(SIPMessage.BODY_CHARSET));
+        req.setTransport("TCP");
+        req.setHost("127.0.0.1");
+        req.setPort(5061);
+// 或者明确指定远端（不从 URI 解析）：req.setExplicitRemote(new InetSocketAddress("127.0.0.1",5060));
 
-        tcpProvider.addSipListener(appListener);
-        udpProvider.addSipListener(appListener);
+        tcpProv.sendRequest(req);
 
-        // ==== 主动发送一个 TCP INVITE（目标按你设备改 host/port）====
-        InetSocketAddress remoteAddr = new InetSocketAddress("10.120.5.185", 5061);
-        SipRequest inviteTcp = createInvite("sip:10.120.5.185:5061", 101, "GetCuUserId");
-       // tcpProvider.sendRequest(inviteTcp);
-        tcpProvider.sendRequest(inviteTcp,remoteAddr);
-
-        // ==== 主动发送一个 UDP INVITE ====
-        SipRequest inviteUdp = createInviteUDP("sip:10.120.5.185:5062", 102, "CuRegister");
-        InetSocketAddress remoteAddr2 = new InetSocketAddress("10.120.5.185", 5062);
-        udpProvider.sendRequest(inviteUdp,remoteAddr2);
-
-        // 运行一段时间观察
-        TimeUnit.MINUTES.sleep(10);
-//        ((SipStackImpl)stack).stop();
-//        scanner.stop();
-    }
-
-    private static SipRequest createInvite(String reqUri, long cseq, String cmd){
-        RequestLine rl = new RequestLine("INVITE", reqUri, "SIP/2.0");
-        SipRequest req = new SipRequest(rl);
-        req.setHeader("Via", reqUri.contains("UDP") ? "SIP/2.0/UDP 127.0.0.1" : "SIP/2.0/TCP 127.0.0.1");
-        req.setHeader("To", "<sip:to@local>");
-        req.setHeader("From", "<sip:from@local>");
-        req.setHeader("Max-Forwards", "70");
-        req.setHeader("Call-ID", "call-12345");
-        req.setHeader("CSeq", cseq + " INVITE");
-        req.setHeader("Content-Type", "RVSS/xml");
-        String xml = "<?xml version=\"1.0\" encoding=\"GB2312\" standalone=\"yes\"?>\r\n"
-                + "<request command=\"" + cmd + "\">\r\n"
-                + "  <parameters>\r\n"
-                + "    <cuUserName>sbqx</cuUserName>\r\n"
-                + "  </parameters>\r\n"
-                + "</request>";
-        req.setRawContent(xml.getBytes(SIPMessage.BODY_CHARSET));
-        return req;
-    }
-    private static SipRequest createInviteUDP(String reqUri, long cseq, String cmd){
-        RequestLine rl = new RequestLine("INVITE", reqUri, "SIP/2.0");
-        SipRequest req = new SipRequest(rl);
-        req.setHeader("Via", "SIP/2.0/UDP 127.0.0.1");
-        req.setHeader("To", "<sip:to@local>");
-        req.setHeader("From", "<sip:from@local>");
-        req.setHeader("Max-Forwards", "70");
-        req.setHeader("Call-ID", "call-12345");
-        req.setHeader("CSeq", cseq + " INVITE");
-        req.setHeader("Content-Type", "RVSS/xml");
-        String xml = "<?xml version=\"1.0\" encoding=\"GB2312\" standalone=\"yes\"?>\r\n"
-                + "<request command=\"" + cmd + "\">\r\n"
-                + "  <parameters>\r\n"
-                + "    <cuUserName>sbqx</cuUserName>\r\n"
-                + "  </parameters>\r\n"
-                + "</request>";
-        req.setRawContent(xml.getBytes(SIPMessage.BODY_CHARSET));
-        return req;
     }
 }

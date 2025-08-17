@@ -19,7 +19,6 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>11</java.version>
-        <netty.version>4.1.100.Final</netty.version>
         <spring-boot.version>3.2.4</spring-boot.version>
     </properties>
 

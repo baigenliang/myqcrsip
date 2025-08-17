@@ -1,4 +1,4 @@
-package com.rsvmcs.qcrsip.core.stack;
+package com.rsvmcs.qcrsip.core.io;
 
 import com.rsvmcs.qcrsip.entity.ChannelRef;
 
