@@ -15,7 +15,6 @@ import java.io.OutputStream;
 
 public class MyHandler implements HttpHandler {
 
-
     private final SipProvider sipProvider;
 
     // 构造函数注入额外参数
@@ -30,7 +29,6 @@ public class MyHandler implements HttpHandler {
 
         // 调用业务逻辑
         try {
-
             SipRequest req = new SipRequest(new RequestLine("INVITE", "sip:127.0.0.1:5060", "SIP/2.0"));
             req.setHeader("Via", "SIP/2.0/TCP 127.0.0.1");
             req.setHeader("To", "<sip:to@127.0.0.1>");
@@ -40,7 +38,7 @@ public class MyHandler implements HttpHandler {
             req.setHeader("Content-Type", "RVSS/xml");
             String xml = "<?xml version=\"1.0\" encoding=\"GB2312\"?><request command=\"Ping\"><parameters/></request>";
             req.setBody(xml.getBytes(SIPMessage.BODY_CHARSET));
-            req.setTransport("TCP");
+            req.setTransport("UDP");
             req.setHost("10.120.5.185");
             req.setPort(5061);
 // 或者明确指定远端（不从 URI 解析）：req.setExplicitRemote(new InetSocketAddress("127.0.0.1",5060));

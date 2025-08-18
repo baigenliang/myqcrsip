@@ -12,9 +12,9 @@ public class UDPMessageChannel {
     private final DatagramChannel channel;
 
     public UDPMessageChannel(InetSocketAddress local) throws IOException {
-//        this.channel = DatagramChannel.open();
-//        this.channel.configureBlocking(false);
-//        this.channel.bind(local); // 仅绑定一次
+//      this.channel = DatagramChannel.open();
+//      this.channel.configureBlocking(false);
+//      this.channel.bind(local); // 仅绑定一次
         this.channel = DatagramChannel.open();
         this.channel.configureBlocking(false);
         this.channel.bind(local);

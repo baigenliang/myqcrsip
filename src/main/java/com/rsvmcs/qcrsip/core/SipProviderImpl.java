@@ -68,12 +68,11 @@ public class SipProviderImpl implements SipProvider {
 
         if ("TCP".equalsIgnoreCase(transport)) {
             String key = keyOf("TCP", dst);
-
             TCPMessageChannel ch = tcpPool.computeIfAbsent(key, k -> {
-                try { return TCPMessageChannel.connect(dst); } catch (Exception e) { throw new RuntimeException(e); }
+                try { return TCPMessageChannel.connect(dst,(TCPMessageProcessor)processor); } catch (Exception e) { throw new RuntimeException(e); }
             });
             //增加此判断保证客户端主动断开时也能再次重新连接
-            ch.send(dst,data,tcpPool,key);
+            ch.send(dst,data,tcpPool,key,(TCPMessageProcessor)processor);
         } else { // UDP
             String key = keyOf("UDP", dst);
             UDPMessageChannel ch = udpPool.computeIfAbsent(key, k -> {
@@ -90,7 +89,7 @@ public class SipProviderImpl implements SipProvider {
         // 优先沿接收通道回发（TCP）
         TCPMessageChannel replyTcp = response.getReplyTcpChannel();
         if (replyTcp != null) {
-            replyTcp.send(null,data,null,null);
+            replyTcp.send(null,data,null,null,null);
             return;
         }
         // 或者 UDP 按对端回发
@@ -109,9 +108,9 @@ public class SipProviderImpl implements SipProvider {
             if ("TCP".equalsIgnoreCase(response.getTransport())) {
                 String key=keyOf("TCP", response.getExplicitRemote());
                 TCPMessageChannel ch = tcpPool.computeIfAbsent(key, k -> {
-                    try { return TCPMessageChannel.connect(response.getExplicitRemote()); } catch (Exception e) { throw new RuntimeException(e); }
+                    try { return TCPMessageChannel.connect(response.getExplicitRemote(),(TCPMessageProcessor)processor); } catch (Exception e) { throw new RuntimeException(e); }
                 });
-                ch.send(response.getExplicitRemote(),data,tcpPool,key);
+                ch.send(response.getExplicitRemote(),data,tcpPool,key,(TCPMessageProcessor)processor);
             } else {
                 UDPMessageChannel ch = udpPool.computeIfAbsent(keyOf("UDP", response.getExplicitRemote()), k -> {
                     try { return new UDPMessageChannel(new InetSocketAddress(lp.getIp(), 0)); } catch (Exception e) { throw new RuntimeException(e); }

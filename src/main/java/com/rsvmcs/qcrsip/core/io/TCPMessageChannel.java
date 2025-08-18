@@ -137,34 +137,50 @@ public class TCPMessageChannel {
         // startMonitor(); 并发一段时间后连接被自动关闭
     }
 
-    public static TCPMessageChannel connect(InetSocketAddress dst) throws IOException {
+    public static TCPMessageChannel connect(InetSocketAddress dst, TCPMessageProcessor processor) throws IOException {
         SocketChannel ch = SocketChannel.open();
-        ch.configureBlocking(false); // 阻塞模式
+        ch.configureBlocking(true); // 阻塞模式 为了首次连接后不sleep也能直接成功write发送数据（避免写数据底层缓冲还没ready，只是写入到内核）
         ch.socket().setTcpNoDelay(true);
         ch.socket().setKeepAlive(true);
         ch.connect(dst);
         while (!ch.finishConnect()) {
             try { Thread.sleep(2); } catch (InterruptedException ignored) {}
         }
+        ch.configureBlocking(false); // 建立成功后再切回非阻塞，给 selector 用,否则阻塞模式selector无法收取数据
+
+        // 注册到 processor 的 selector，统一监听(确保主动发送的连接也能正常响应回来)
+//        ch.register(processor.selector(), SelectionKey.OP_READ, ByteBuffer.allocate(128 * 1024));
+//        System.out.println("[TCP] connected to " + dst);
+
+        if(processor!=null) {
+            SelectionKey key = ch.keyFor(processor.selector());
+            if (key == null || !key.isValid()) {
+                ch.register(processor.selector(), SelectionKey.OP_READ, ByteBuffer.allocate(128 * 1024));
+            } else {
+                // 已经注册过了，更新感兴趣的事件
+                key.interestOps(SelectionKey.OP_READ);
+            }
+        }
         return new TCPMessageChannel(ch);
     }
 
-    public void send(InetSocketAddress dst, byte[] bytes, Map<String, TCPMessageChannel> tcpPool, String key) throws IOException {
+    public void send(InetSocketAddress dst, byte[] bytes, Map<String, TCPMessageChannel> tcpPool, String key, TCPMessageProcessor processor) throws IOException {
         ByteBuffer buf = ByteBuffer.wrap(bytes);
         try {
             while (buf.hasRemaining()) {
-                channel.write(buf); // 写数据
+                channel.write(buf); // 写数据、 阻塞模式一定能写完
             }
+
         } catch (IOException e) {
             if (dst != null && tcpPool != null && key != null) {
                 System.err.println("连接已断开，尝试重连: " + e.getMessage());
                 // 移除旧的
                 tcpPool.remove(key);
                 // 重新建立
-                TCPMessageChannel newCh = TCPMessageChannel.connect(dst);
+                TCPMessageChannel newCh = TCPMessageChannel.connect(dst,processor);
                 tcpPool.put(key, newCh);
                 // 重新发送一次
-                newCh.send(dst, bytes, tcpPool, key);
+                newCh.send(dst, bytes, tcpPool, key,processor);
             }
         }
     }

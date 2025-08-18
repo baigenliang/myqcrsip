@@ -281,4 +281,9 @@ public class TCPMessageProcessor extends MessageProcessor implements Runnable {
             }
         }
     }
+
+    public Selector selector() {
+        return selector;
+    }
+
 }

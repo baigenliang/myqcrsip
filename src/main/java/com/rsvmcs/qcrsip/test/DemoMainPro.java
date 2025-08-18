@@ -133,13 +133,10 @@ public class DemoMainPro {
             }
         });
 
-
         // 创建 HttpServer，监听 8080 端口
         HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
-
         // 注册处理器
         server.createContext("/test", new MyHandler(tcpProv));
-
         // 启动服务
         server.setExecutor(null); // 使用默认线程池
         server.start();
