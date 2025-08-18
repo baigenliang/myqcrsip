@@ -68,10 +68,12 @@ public class SipProviderImpl implements SipProvider {
 
         if ("TCP".equalsIgnoreCase(transport)) {
             String key = keyOf("TCP", dst);
+
             TCPMessageChannel ch = tcpPool.computeIfAbsent(key, k -> {
                 try { return TCPMessageChannel.connect(dst); } catch (Exception e) { throw new RuntimeException(e); }
             });
-            ch.send(data);
+            //增加此判断保证客户端主动断开时也能再次重新连接
+            ch.send(dst,data,tcpPool,key);
         } else { // UDP
             String key = keyOf("UDP", dst);
             UDPMessageChannel ch = udpPool.computeIfAbsent(key, k -> {
@@ -88,7 +90,7 @@ public class SipProviderImpl implements SipProvider {
         // 优先沿接收通道回发（TCP）
         TCPMessageChannel replyTcp = response.getReplyTcpChannel();
         if (replyTcp != null) {
-            replyTcp.send(data);
+            replyTcp.send(null,data,null,null);
             return;
         }
         // 或者 UDP 按对端回发
@@ -105,10 +107,11 @@ public class SipProviderImpl implements SipProvider {
         // 否则按 Response 的显式目的地（如果业务层设置了）
         if (response.getExplicitRemote() != null) {
             if ("TCP".equalsIgnoreCase(response.getTransport())) {
-                TCPMessageChannel ch = tcpPool.computeIfAbsent(keyOf("TCP", response.getExplicitRemote()), k -> {
+                String key=keyOf("TCP", response.getExplicitRemote());
+                TCPMessageChannel ch = tcpPool.computeIfAbsent(key, k -> {
                     try { return TCPMessageChannel.connect(response.getExplicitRemote()); } catch (Exception e) { throw new RuntimeException(e); }
                 });
-                ch.send(data);
+                ch.send(response.getExplicitRemote(),data,tcpPool,key);
             } else {
                 UDPMessageChannel ch = udpPool.computeIfAbsent(keyOf("UDP", response.getExplicitRemote()), k -> {
                     try { return new UDPMessageChannel(new InetSocketAddress(lp.getIp(), 0)); } catch (Exception e) { throw new RuntimeException(e); }
@@ -126,7 +129,6 @@ public class SipProviderImpl implements SipProvider {
     public void fireRequest(RequestEvent ev) {
         SipListener l = this.listener;
         if (l != null) l.processRequest(ev);
-
     }
 
     @Override

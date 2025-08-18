@@ -5,6 +5,7 @@ import com.rsvmcs.qcrsip.core.events.RequestEvent;
 import com.rsvmcs.qcrsip.core.events.ResponseEvent;
 import com.rsvmcs.qcrsip.core.events.TimeoutEvent;
 import com.rsvmcs.qcrsip.core.model.*;
+import com.sun.net.httpserver.HttpServer;
 
 import java.net.InetSocketAddress;
 import java.util.LinkedHashMap;
@@ -90,13 +91,19 @@ public class DemoMainPro {
 //        ((SipStackImpl) stack).stopProvider(udpProvider);
 
 
+         // SipProvider tcpProv=  SIPSender.init();
         SipStack stack = new SipStackImpl();
-        stack.start();
-        ListeningPoint tcpLP = stack.createListeningPoint("127.0.0.1", 5060, "UDP");
+        try {
+            stack.start();
+        } catch (Exception exception) {
+            exception.printStackTrace();
+        }
+        ListeningPoint tcpLP = stack.createListeningPoint("10.120.5.185", 5060, "UDP");
         SipProvider tcpProv = stack.createSipProvider(tcpLP);
 
+
 // 业务监听器
-        tcpProv.addSipListener(new SipListener() {
+          tcpProv.addSipListener(new SipListener() {
             @Override public void processRequest(RequestEvent e) {
                 System.out.println("[Biz] processRequest:\n" + e.getRequest().encode());
 
@@ -112,9 +119,9 @@ public class DemoMainPro {
                 ok.setBody(body.getBytes(SIPMessage.BODY_CHARSET));
 
                 // 沿原通道回发（TCP）
-                //if (e.getTcpChannel()!=null) ok.setReplyChannel(e.getTcpChannel());
+                 if (e.getTcpChannel()!=null) ok.setReplyChannel(e.getTcpChannel());
                 // 如果是 UDP：
-                 ok.setUdpPeer(e.getUdpPeer());
+                 if(e.getUdpPeer()!=null) ok.setUdpPeer(e.getUdpPeer());
 
                 try { tcpProv.sendResponse(ok); } catch (Exception ex) { ex.printStackTrace(); }
             }
@@ -126,23 +133,36 @@ public class DemoMainPro {
             }
         });
 
-// 等待对端连接/发包，然后演示主动发一个 INVITE
-        Thread.sleep(6500);
-        SipRequest req = new SipRequest(new RequestLine("INVITE","sip:127.0.0.1:5060","SIP/2.0"));
-        req.setHeader("Via","SIP/2.0/TCP 127.0.0.1");
-        req.setHeader("To","<sip:to@127.0.0.1>");
-        req.setHeader("From","<sip:from@127.0.0.1>");
-        req.setHeader("Call-ID","abc-123");
-        req.setHeader("CSeq","1 INVITE");
-        req.setHeader("Content-Type","RVSS/xml");
-        String xml = "<?xml version=\"1.0\" encoding=\"GB2312\"?><request command=\"Ping\"><parameters/></request>";
-        req.setBody(xml.getBytes(SIPMessage.BODY_CHARSET));
-        req.setTransport("TCP");
-        req.setHost("127.0.0.1");
-        req.setPort(5061);
-// 或者明确指定远端（不从 URI 解析）：req.setExplicitRemote(new InetSocketAddress("127.0.0.1",5060));
 
-        tcpProv.sendRequest(req);
+        // 创建 HttpServer，监听 8080 端口
+        HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+
+        // 注册处理器
+        server.createContext("/test", new MyHandler(tcpProv));
+
+        // 启动服务
+        server.setExecutor(null); // 使用默认线程池
+        server.start();
+        System.out.println("HTTP Server started on http://localhost:8080/test");
+
+
+// 等待对端连接/发包，然后演示主动发一个 INVITE
+      //  Thread.sleep(1500);
+//        SipRequest req = new SipRequest(new RequestLine("INVITE","sip:127.0.0.1:5060","SIP/2.0"));
+//        req.setHeader("Via","SIP/2.0/TCP 127.0.0.1");
+//        req.setHeader("To","<sip:to@127.0.0.1>");
+//        req.setHeader("From","<sip:from@127.0.0.1>");
+//        req.setHeader("Call-ID","abc-123");
+//        req.setHeader("CSeq","1 INVITE");
+//        req.setHeader("Content-Type","RVSS/xml");
+//        String xml = "<?xml version=\"1.0\" encoding=\"GB2312\"?><request command=\"Ping\"><parameters/></request>";
+//        req.setBody(xml.getBytes(SIPMessage.BODY_CHARSET));
+//        req.setTransport("TCP");
+//        req.setHost("127.0.0.1");
+//        req.setPort(5061);
+//// 或者明确指定远端（不从 URI 解析）：req.setExplicitRemote(new InetSocketAddress("127.0.0.1",5060));
+//
+//        tcpProv.sendRequest(req);
 
     }
 }

@@ -231,7 +231,7 @@ public class TCPMessageProcessor extends MessageProcessor implements Runnable {
                     if (key.isAcceptable()) {
                         SocketChannel ch = server.accept();
                         if (ch != null) {
-                            ch.configureBlocking(false);
+                            ch.configureBlocking(false); // ⚠️ 必须是 false
                             ch.register(selector, SelectionKey.OP_READ, ByteBuffer.allocate(128 * 1024));
                             System.out.println("[TCP] accepted " + ch.getRemoteAddress());
                         }

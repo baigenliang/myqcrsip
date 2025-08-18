@@ -6,6 +6,7 @@ import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
+import java.util.Map;
 
 public class UDPMessageChannel {
     private final DatagramChannel channel;
@@ -14,11 +15,9 @@ public class UDPMessageChannel {
 //        this.channel = DatagramChannel.open();
 //        this.channel.configureBlocking(false);
 //        this.channel.bind(local); // 仅绑定一次
-
         this.channel = DatagramChannel.open();
-        this.channel.configureBlocking(true); // 阻塞模式更简单
+        this.channel.configureBlocking(false);
         this.channel.bind(local);
-
     }
 
     public void send(InetSocketAddress dst, byte[] data) throws IOException {
@@ -37,6 +36,7 @@ public class UDPMessageChannel {
         ByteBuffer buf = ByteBuffer.wrap(data);
         channel.send(buf, dst);
     }
+
 
     public DatagramChannel getChannel(){ return channel; }
 

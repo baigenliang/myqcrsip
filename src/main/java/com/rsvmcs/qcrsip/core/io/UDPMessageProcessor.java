@@ -27,7 +27,7 @@ public class UDPMessageProcessor  extends MessageProcessor implements Runnable {
     @Override
     public void start() throws Exception {
         ch = DatagramChannel.open();
-        ch.configureBlocking(false);
+        ch.configureBlocking(false); //接收采用非阻塞
         ch.bind(new InetSocketAddress(lp.getIp(), lp.getPort()));
         running = true;
         ioThread = new Thread(this, "UDPMessageProcessor-" + lp);

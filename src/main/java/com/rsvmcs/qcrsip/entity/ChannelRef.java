@@ -1,6 +1,6 @@
 package com.rsvmcs.qcrsip.entity;
 
-import com.rsvmcs.qcrsip.core.stack.UDPMessageChannel;
+import com.rsvmcs.qcrsip.core.io.UDPMessageChannel;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
