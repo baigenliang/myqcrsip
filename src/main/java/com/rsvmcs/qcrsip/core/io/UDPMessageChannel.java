@@ -13,7 +13,6 @@ import java.util.Map;
 public class UDPMessageChannel {
     private final DatagramChannel channel;
 
-    private final InetSocketAddress localAddr;
 
     public UDPMessageChannel(InetSocketAddress local) throws IOException {
 //      this.channel = DatagramChannel.open();
@@ -22,7 +21,6 @@ public class UDPMessageChannel {
         this.channel = DatagramChannel.open();
         this.channel.configureBlocking(false);
         this.channel.bind(local);
-        this.localAddr = (InetSocketAddress) channel.getLocalAddress();
     }
 
     public void send(InetSocketAddress dst, byte[] data) throws IOException {
@@ -45,12 +43,7 @@ public class UDPMessageChannel {
 
     public DatagramChannel getChannel(){ return channel; }
 
-    // 在 decode SIP 报文时调用这个，保证每个 SIPMessage 知道 localIP
-    public void attachLocalAddress(SIPMessage sipMessage) {
-        if (sipMessage != null) {
-            sipMessage.setLocalAddress(localAddr);
-        }
-    }
+
 
 //    //private final DatagramSocket socket;
 //    private  DatagramChannel channel;

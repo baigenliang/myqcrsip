@@ -62,6 +62,9 @@ public class UDPMessageProcessor  extends MessageProcessor implements Runnable {
                 //设置用户和客户端通信的本地地址
                 InetSocketAddress localAddr = (InetSocketAddress) ch.socket().getLocalSocketAddress();
                 msg.setLocalAddress(localAddr);
+                InetSocketAddress remoteAddress =remote;// (InetSocketAddress) ch.socket().getRemoteSocketAddress();//主要针对tcp，udp值为null
+                msg.setExplicitRemote(remoteAddress);
+
 
                 if (msg instanceof SipRequest) {
                     scanner.offer(new EventScanner.Item(EventScanner.Kind.REQUEST, new RequestEvent((SipRequest) msg, null, remote), provider));

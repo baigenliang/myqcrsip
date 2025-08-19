@@ -10,7 +10,6 @@ public class SipRequest extends SIPMessage implements Request {
     private String transport = "TCP";
     private String host;
     private int port = 5060;
-    private InetSocketAddress explicitRemote; // 手动指定目的地
 
     public SipRequest(RequestLine rl){ this.requestLine=rl; }
 
@@ -27,6 +26,4 @@ public class SipRequest extends SIPMessage implements Request {
     public void setPort(int p){ this.port=p; }
     public int getPort(){ return port; }
 
-    public void setExplicitRemote(InetSocketAddress r){ this.explicitRemote=r; }
-    public InetSocketAddress getExplicitRemote(){ return explicitRemote; }
 }

@@ -98,7 +98,7 @@ public class DemoMainPro {
         } catch (Exception exception) {
             exception.printStackTrace();
         }
-        ListeningPoint tcpLP = stack.createListeningPoint("10.120.5.185", 5060, "UDP");
+        ListeningPoint tcpLP = stack.createListeningPoint("10.120.5.185", 5060, "TCP");
         SipProvider tcpProv = stack.createSipProvider(tcpLP);
 
         String iplocal=tcpProv.getListeningPoint().getIp();
@@ -107,9 +107,9 @@ public class DemoMainPro {
             @Override public void processRequest(RequestEvent e) {
                 System.out.println("[Biz] processRequest:\n" + e.getRequest().encode());
 
-
                String aa= e.getRequest().getHost();
                InetSocketAddress inetSocketAddresse=e.getRequest().getLocalAddress();
+               InetSocketAddress inetSocketAddressRemote=e.getRequest().getExplicitRemote();
 
                String transport= getTransportFromMessage(e.getRequest());
 

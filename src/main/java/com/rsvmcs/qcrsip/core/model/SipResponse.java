@@ -16,7 +16,7 @@ public class SipResponse extends SIPMessage implements Response {
 
     // 可选：业务层显式指定发送目的地/协议
     private String transport = "TCP";
-    private InetSocketAddress explicitRemote;
+//    private InetSocketAddress explicitRemote;
 
     public SipResponse(StatusLine sl){ this.statusLine=sl; }
 
@@ -33,6 +33,6 @@ public class SipResponse extends SIPMessage implements Response {
     public void setTransport(String t){ this.transport=t; }
     public String getTransport(){ return transport; }
 
-    public void setExplicitRemote(InetSocketAddress r){ this.explicitRemote=r; }
-    public InetSocketAddress getExplicitRemote(){ return explicitRemote; }
+//    public void setExplicitRemote(InetSocketAddress r){ this.explicitRemote=r; }
+//    public InetSocketAddress getExplicitRemote(){ return explicitRemote; }
 }

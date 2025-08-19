@@ -138,15 +138,21 @@ public class TCPMessageChannel {
     }
 
     public static TCPMessageChannel connect(InetSocketAddress dst, TCPMessageProcessor processor) throws IOException {
+
+        System.out.println("[TCP] 开始连接: " + dst);
         SocketChannel ch = SocketChannel.open();
         ch.configureBlocking(true); // 阻塞模式 为了首次连接后不sleep也能直接成功write发送数据（避免写数据底层缓冲还没ready，只是写入到内核）
-        ch.socket().setTcpNoDelay(true);
-        ch.socket().setKeepAlive(true);
+        System.out.println("[TCP] 调用 connect()");
         ch.connect(dst);
         while (!ch.finishConnect()) {
+            System.out.println("[TCP] 等待 finishConnect...");
             try { Thread.sleep(2); } catch (InterruptedException ignored) {}
         }
+        System.out.println("[TCP] finishConnect 完成: " + ch.isConnected());
+        ch.socket().setTcpNoDelay(true);
+        ch.socket().setKeepAlive(true);
         ch.configureBlocking(false); // 建立成功后再切回非阻塞，给 selector 用,否则阻塞模式selector无法收取数据
+        System.out.println("[TCP] 已切换为非阻塞模式");
 
         // 注册到 processor 的 selector，统一监听(确保主动发送的连接也能正常响应回来)
 //        ch.register(processor.selector(), SelectionKey.OP_READ, ByteBuffer.allocate(128 * 1024));
@@ -156,22 +162,30 @@ public class TCPMessageChannel {
             SelectionKey key = ch.keyFor(processor.selector());
             if (key == null || !key.isValid()) {
                 ch.register(processor.selector(), SelectionKey.OP_READ, ByteBuffer.allocate(128 * 1024));
+                System.out.println("[TCP] 注册到 selector: OP_READ");
             } else {
                 // 已经注册过了，更新感兴趣的事件
                 key.interestOps(SelectionKey.OP_READ);
+                System.out.println("[TCP] 已存在 key, 更新为 OP_READ");
             }
         }
+
+        System.out.println("[TCP] connect 完成返回 channel");
         return new TCPMessageChannel(ch);
     }
 
     public void send(InetSocketAddress dst, byte[] bytes, Map<String, TCPMessageChannel> tcpPool, String key, TCPMessageProcessor processor) throws IOException {
         ByteBuffer buf = ByteBuffer.wrap(bytes);
         try {
+            System.out.println("[TCP] 发送数据开始, 长度=" + bytes.length + " dst=" + dst);
             while (buf.hasRemaining()) {
-                channel.write(buf); // 写数据、 阻塞模式一定能写完
+                int written=channel.write(buf); // 写数据、 阻塞模式一定能写完
+                System.out.println("[TCP] channel.write 返回=" + written + ", remaining=" + buf.remaining());
             }
+            System.out.println("[TCP] 数据发送完成");
 
         } catch (IOException e) {
+            System.err.println("[TCP] 发送失败: " + e.getMessage());
             if (dst != null && tcpPool != null && key != null) {
                 System.err.println("连接已断开，尝试重连: " + e.getMessage());
                 // 移除旧的
@@ -179,6 +193,7 @@ public class TCPMessageChannel {
                 // 重新建立
                 TCPMessageChannel newCh = TCPMessageChannel.connect(dst,processor);
                 tcpPool.put(key, newCh);
+                System.err.println("[TCP] 重连完成, 再次发送");
                 // 重新发送一次
                 newCh.send(dst, bytes, tcpPool, key,processor);
             }

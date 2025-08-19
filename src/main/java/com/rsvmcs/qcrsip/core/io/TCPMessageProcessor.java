@@ -262,6 +262,8 @@ public class TCPMessageProcessor extends MessageProcessor implements Runnable {
 
                             InetSocketAddress localAddress = (InetSocketAddress) ch.getLocalAddress();
                             msg.setLocalAddress(localAddress);
+                            InetSocketAddress remoteAddress = (InetSocketAddress) ch.getRemoteAddress();
+                            msg.setExplicitRemote(remoteAddress);
 
                             if (msg instanceof SipRequest) {
                                 scanner.offer(new EventScanner.Item(

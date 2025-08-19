@@ -68,9 +68,18 @@ public class SipProviderImpl implements SipProvider {
 
         if ("TCP".equalsIgnoreCase(transport)) {
             String key = keyOf("TCP", dst);
+            System.out.println("[调用方] 获取/创建连接 key=" + key + " dst=" + dst);
             TCPMessageChannel ch = tcpPool.computeIfAbsent(key, k -> {
-                try { return TCPMessageChannel.connect(dst,(TCPMessageProcessor)processor); } catch (Exception e) { throw new RuntimeException(e); }
+                try {
+                    TCPMessageChannel newCh = TCPMessageChannel.connect(dst,(TCPMessageProcessor)processor);
+                    System.out.println("[调用方] 新建连接成功: " + dst);
+                    return newCh;
+                } catch (Exception e) {
+                    System.err.println("[调用方] 新建连接失败: " + e.getMessage());
+                    throw new RuntimeException(e);
+                }
             });
+            System.out.println("[调用方] 开始发送数据, 长度=" + data.length);
             //增加此判断保证客户端主动断开时也能再次重新连接
             ch.send(dst,data,tcpPool,key,(TCPMessageProcessor)processor);
         } else { // UDP

@@ -24,6 +24,11 @@ public abstract class SIPMessage {
     public byte[] getBody(){ return body; }
     public void setBody(byte[] body){ this.body = body; }
 
+    private InetSocketAddress explicitRemote; //只设置接收的请求和响应，主动向外发送的请求和响应未设置(需要手动设置与设置host和port是一样的)
+
+    public void setExplicitRemote(InetSocketAddress r){ this.explicitRemote=r; }
+    public InetSocketAddress getExplicitRemote(){ return explicitRemote; }
+
     private InetSocketAddress localAddress; // 与客户端发送或者接收通信消息时本地地址
 
     public InetSocketAddress getLocalAddress() {

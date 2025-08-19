@@ -38,11 +38,10 @@ public class MyHandler implements HttpHandler {
             req.setHeader("Content-Type", "RVSS/xml");
             String xml = "<?xml version=\"1.0\" encoding=\"GB2312\"?><request command=\"Ping\"><parameters/></request>";
             req.setBody(xml.getBytes(SIPMessage.BODY_CHARSET));
-            req.setTransport("UDP");
-            req.setHost("10.120.5.185");
+            req.setTransport("TCP");
+            req.setHost("10.120.5.190");
             req.setPort(5061);
-// 或者明确指定远端（不从 URI 解析）：req.setExplicitRemote(new InetSocketAddress("127.0.0.1",5060));
-
+            // 或者明确指定远端（不从 URI 解析）：req.setExplicitRemote(new InetSocketAddress("127.0.0.1",5060));
             sipProvider.sendRequest(req);
         } catch (Exception e) {
 
