@@ -259,6 +259,10 @@ public class TCPMessageProcessor extends MessageProcessor implements Runnable {
                                 // 可能是 keepalive/空帧，忽略
                                 continue;
                             }
+
+                            InetSocketAddress localAddress = (InetSocketAddress) ch.getLocalAddress();
+                            msg.setLocalAddress(localAddress);
+
                             if (msg instanceof SipRequest) {
                                 scanner.offer(new EventScanner.Item(
                                         EventScanner.Kind.REQUEST,

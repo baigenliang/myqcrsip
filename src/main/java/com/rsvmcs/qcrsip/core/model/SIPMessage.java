@@ -24,6 +24,16 @@ public abstract class SIPMessage {
     public byte[] getBody(){ return body; }
     public void setBody(byte[] body){ this.body = body; }
 
+    private InetSocketAddress localAddress; // 与客户端发送或者接收通信消息时本地地址
+
+    public InetSocketAddress getLocalAddress() {
+        return localAddress;
+    }
+
+    public void setLocalAddress(InetSocketAddress localAddress) {
+        this.localAddress = localAddress;
+    }
+
 //    private InetSocketAddress remoteAddress;  // 来源地址
 //
 //    public void setRemoteAddress(InetSocketAddress addr) {
@@ -107,6 +117,7 @@ public abstract class SIPMessage {
             // 纯 CRLFCRLF / keepalive，忽略
             return null;
         }
+
 
         // 响应：首行以 SIP/ 开头；否则按请求处理（不校验 token 数量）
         if (first.toUpperCase().startsWith("SIP/")) {

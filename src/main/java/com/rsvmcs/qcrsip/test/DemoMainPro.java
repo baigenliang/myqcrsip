@@ -109,6 +109,7 @@ public class DemoMainPro {
 
 
                String aa= e.getRequest().getHost();
+               InetSocketAddress inetSocketAddresse=e.getRequest().getLocalAddress();
 
                String transport= getTransportFromMessage(e.getRequest());
 

@@ -58,8 +58,10 @@ public class UDPMessageProcessor  extends MessageProcessor implements Runnable {
                 try { msg = SIPMessage.parse(txt); } catch (Throwable t) { t.printStackTrace(); msg = null; }
                 if (msg == null) continue; // keepalive / 空帧
 
-
-              //msg.setRemoteAddress(remote);  // 不需要加，客户端调用的时候设置  ok.setUdpPeer(e.getUdpPeer());
+                //msg.setRemoteAddress(remote);  // 不需要加，客户端调用的时候设置  ok.setUdpPeer(e.getUdpPeer());
+                //设置用户和客户端通信的本地地址
+                InetSocketAddress localAddr = (InetSocketAddress) ch.socket().getLocalSocketAddress();
+                msg.setLocalAddress(localAddr);
 
                 if (msg instanceof SipRequest) {
                     scanner.offer(new EventScanner.Item(EventScanner.Kind.REQUEST, new RequestEvent((SipRequest) msg, null, remote), provider));
