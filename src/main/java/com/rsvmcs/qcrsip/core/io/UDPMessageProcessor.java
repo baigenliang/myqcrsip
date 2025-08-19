@@ -7,7 +7,6 @@ import com.rsvmcs.qcrsip.core.events.RequestEvent;
 import com.rsvmcs.qcrsip.core.events.ResponseEvent;
 import com.rsvmcs.qcrsip.core.model.SipRequest;
 import com.rsvmcs.qcrsip.core.model.SipResponse;
-import com.rsvmcs.qcrsip.entity.ChannelRef;
 import com.rsvmcs.qcrsip.core.model.SIPMessage;
 
 import java.net.*;

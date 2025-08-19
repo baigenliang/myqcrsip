@@ -101,11 +101,16 @@ public class DemoMainPro {
         ListeningPoint tcpLP = stack.createListeningPoint("10.120.5.185", 5060, "UDP");
         SipProvider tcpProv = stack.createSipProvider(tcpLP);
 
-
-// 业务监听器
+        String iplocal=tcpProv.getListeningPoint().getIp();
+         // 业务监听器
           tcpProv.addSipListener(new SipListener() {
             @Override public void processRequest(RequestEvent e) {
                 System.out.println("[Biz] processRequest:\n" + e.getRequest().encode());
+
+
+               String aa= e.getRequest().getHost();
+
+               String transport= getTransportFromMessage(e.getRequest());
 
                 // 构造 200 OK
                 SipResponse ok = new SipResponse(new StatusLine("SIP/2.0",200,"OK"));
@@ -123,15 +128,24 @@ public class DemoMainPro {
                 // 如果是 UDP：
                  if(e.getUdpPeer()!=null) ok.setUdpPeer(e.getUdpPeer());
 
+
+
                 try { tcpProv.sendResponse(ok); } catch (Exception ex) { ex.printStackTrace(); }
             }
             @Override public void processResponse(ResponseEvent responseEvent) {
-                System.out.println("[Biz] processResponse:\n" + responseEvent.getResponse().encode());
+                System.out.println("[Biz] processResponse:\n " + responseEvent.getResponse().encode());
+
+                System.out.println("[Biz] processResponse: headers\n " + responseEvent.getResponse().getHeaders());
+                System.out.println("[Biz] processResponse: bodys\n " + new String(responseEvent.getResponse().getBody()));
+
             }
             @Override public void processTimeout(TimeoutEvent timeoutEvent) {
                 System.out.println("[Biz] timeout: " + timeoutEvent.getInfo());
             }
         });
+
+
+
 
         // 创建 HttpServer，监听 8080 端口
         HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
@@ -161,5 +175,26 @@ public class DemoMainPro {
 //
 //        tcpProv.sendRequest(req);
 
+    }
+
+    public static String getTransportFromMessage(SIPMessage message) {
+        String via = message.getHeader("Via");
+        if (via == null) {
+            return null;
+        }
+        // Via 格式：SIP/2.0/UDP host:port;params
+        //          SIP/2.0/TCP host:port;params
+        // 所以只要取 "SIP/2.0/" 后面的部分直到空格即可
+        int idx = via.indexOf("SIP/2.0/");
+        if (idx >= 0) {
+            String after = via.substring(idx + "SIP/2.0/".length()).trim();
+            int spaceIdx = after.indexOf(' ');
+            if (spaceIdx > 0) {
+                return after.substring(0, spaceIdx).toUpperCase(); // 结果是 "UDP" / "TCP" / "TLS" 等
+            } else {
+                return after.toUpperCase();
+            }
+        }
+        return null;
     }
 }

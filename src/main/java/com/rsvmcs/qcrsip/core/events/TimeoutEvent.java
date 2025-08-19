@@ -1,7 +1,6 @@
 package com.rsvmcs.qcrsip.core.events;
 
 import com.rsvmcs.qcrsip.core.SipProviderImpl;
-import com.rsvmcs.qcrsip.entity.SipEvent;
 
 import java.util.EventObject;
 
