@@ -100,6 +100,9 @@ public class DemoMainPro {
         }
         ListeningPoint tcpLP = stack.createListeningPoint("10.120.5.185", 5060, "TCP");
         SipProvider tcpProv = stack.createSipProvider(tcpLP);
+        ListeningPoint udpLP = stack.createListeningPoint("10.120.5.185", 5060, "UDP");
+        SipProvider udpProv = stack.createSipProvider(udpLP);
+
 
         String iplocal=tcpProv.getListeningPoint().getIp();
          // 业务监听器
@@ -146,12 +149,56 @@ public class DemoMainPro {
         });
 
 
+        String iplocal2=udpProv.getListeningPoint().getIp();
+        // 业务监听器
+        udpProv.addSipListener(new SipListener() {
+            @Override public void processRequest(RequestEvent e) {
+                System.out.println("[Biz] processRequest:\n" + e.getRequest().encode());
 
+                String aa= e.getRequest().getHost();
+                InetSocketAddress inetSocketAddresse=e.getRequest().getLocalAddress();
+                InetSocketAddress inetSocketAddressRemote=e.getRequest().getExplicitRemote();
+
+                String transport= getTransportFromMessage(e.getRequest());
+
+                // 构造 200 OK
+                SipResponse ok = new SipResponse(new StatusLine("SIP/2.0",200,"OK"));
+                ok.setHeader("Via", e.getRequest().getHeader("Via"));
+                ok.setHeader("To",   e.getRequest().getHeader("To"));
+                ok.setHeader("From", e.getRequest().getHeader("From"));
+                ok.setHeader("Call-ID", e.getRequest().getHeader("Call-ID"));
+                ok.setHeader("CSeq", e.getRequest().getHeader("CSeq"));
+                ok.setHeader("Content-Type", "RVSS/xml");
+                String body = "<?xml version=\"1.0\" encoding=\"GB2312\"?>\r\n<response command=\"Ack\"><result code=\"0\">ok</result></response>";
+                ok.setBody(body.getBytes(SIPMessage.BODY_CHARSET));
+
+                // 沿原通道回发（TCP）
+                if (e.getTcpChannel()!=null) ok.setReplyChannel(e.getTcpChannel());
+                // 如果是 UDP：
+                if(e.getUdpPeer()!=null) ok.setUdpPeer(e.getUdpPeer());
+
+
+
+                try { udpProv.sendResponse(ok); } catch (Exception ex) { ex.printStackTrace(); }
+            }
+            @Override public void processResponse(ResponseEvent responseEvent) {
+                System.out.println("[Biz] processResponse:\n " + responseEvent.getResponse().encode());
+
+                System.out.println("[Biz] processResponse: headers\n " + responseEvent.getResponse().getHeaders());
+                System.out.println("[Biz] processResponse: bodys\n " + new String(responseEvent.getResponse().getBody()));
+
+            }
+            @Override public void processTimeout(TimeoutEvent timeoutEvent) {
+                System.out.println("[Biz] timeout: " + timeoutEvent.getInfo());
+            }
+        });
 
         // 创建 HttpServer，监听 8080 端口
         HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
         // 注册处理器
         server.createContext("/test", new MyHandler(tcpProv));
+        // 注册处理器
+        server.createContext("/test2", new MyHandlerUdp(udpProv));
         // 启动服务
         server.setExecutor(null); // 使用默认线程池
         server.start();

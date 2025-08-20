@@ -14,6 +14,8 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
+
 public class TCPMessageProcessor extends MessageProcessor implements Runnable {
 
 //    private final ListeningPoint lp;
@@ -237,47 +239,65 @@ public class TCPMessageProcessor extends MessageProcessor implements Runnable {
                     } else if (key.isReadable()) {
                         SocketChannel ch = (SocketChannel) key.channel();
                         ByteBuffer in = (ByteBuffer) key.attachment();
-                        int n = ch.read(in);
-                        if (n == -1) { key.cancel(); ch.close(); continue; }
-                        if (n <= 0) continue;
-
-                        in.flip();
-                        while (true) {
-                            SIPMessage.Frame f = SIPMessage.tryExtractFrame(in);
-                            if (f == null) break;
-                            String txt = new String(f.bytes, StandardCharsets.US_ASCII);
-
-                            SIPMessage msg;
-                            try {
-                                msg = SIPMessage.parse(txt);
-                            } catch (Throwable t) {
-                                // 极端异常：直接丢弃该帧，避免死循环
-                                t.printStackTrace();
-                                msg = null;
-                            }
-                            if (msg == null) {
-                                // 可能是 keepalive/空帧，忽略
+                        try {
+                            int n = ch.read(in);
+                            if (n == -1) {
+                                // 对端正常关闭
+                                System.out.println("[TCP] 对端关闭连接: " + ch.getRemoteAddress());
+                                key.cancel();
+                                ch.close();
                                 continue;
                             }
+                            if (n <= 0) {
+                                continue; // 无数据
+                            }
 
-                            InetSocketAddress localAddress = (InetSocketAddress) ch.getLocalAddress();
-                            msg.setLocalAddress(localAddress);
-                            InetSocketAddress remoteAddress = (InetSocketAddress) ch.getRemoteAddress();
-                            msg.setExplicitRemote(remoteAddress);
+                            in.flip();
+                            while (true) {
+                                SIPMessage.Frame f = SIPMessage.tryExtractFrame(in);
+                                if (f == null) break;
+                                String txt = new String(f.bytes, StandardCharsets.US_ASCII);
 
-                            if (msg instanceof SipRequest) {
-                                scanner.offer(new EventScanner.Item(
-                                        EventScanner.Kind.REQUEST,
-                                        new RequestEvent((SipRequest) msg, new TCPMessageChannel(ch), null),
-                                        provider));
-                            } else {
-                                scanner.offer(new EventScanner.Item(
-                                        EventScanner.Kind.RESPONSE,
-                                        new ResponseEvent((SipResponse) msg),
-                                        provider));
+                                SIPMessage msg;
+                                try {
+                                    msg = SIPMessage.parse(txt);
+                                } catch (Throwable t) {
+                                    // 极端异常：直接丢弃该帧，避免死循环
+                                    t.printStackTrace();
+                                    msg = null;
+                                }
+                                if (msg == null) {
+                                    // 可能是 keepalive/空帧，忽略
+                                    continue;
+                                }
+
+                                InetSocketAddress localAddress = (InetSocketAddress) ch.getLocalAddress();
+                                msg.setLocalAddress(localAddress);
+                                InetSocketAddress remoteAddress = (InetSocketAddress) ch.getRemoteAddress();
+                                msg.setExplicitRemote(remoteAddress);
+
+                                if (msg instanceof SipRequest) {
+                                    scanner.offer(new EventScanner.Item(
+                                            EventScanner.Kind.REQUEST,
+                                            new RequestEvent((SipRequest) msg, new TCPMessageChannel(ch), null),
+                                            provider));
+                                } else {
+                                    scanner.offer(new EventScanner.Item(
+                                            EventScanner.Kind.RESPONSE,
+                                            new ResponseEvent((SipResponse) msg),
+                                            provider));
+                                }
+                            }
+                            in.compact();
+                        } catch (IOException e) {
+                            // 对端异常关闭（如强退） 核心：读异常说明连接坏了，必须清理
+                            System.err.println("[TCP] 读异常，关闭连接: " + e);
+                            key.cancel();
+                            try {
+                                ch.close();
+                            } catch (Exception ignore) {
                             }
                         }
-                        in.compact();
                     }
                 }
                 selector.selectedKeys().clear();
@@ -286,6 +306,96 @@ public class TCPMessageProcessor extends MessageProcessor implements Runnable {
             }
         }
     }
+
+//    @Override
+//    public void run() {
+//        while (running) {
+//            try{
+//                selector.select();  // 阻塞等待事件
+//                Iterator<SelectionKey> it = selector.selectedKeys().iterator();
+//                while (it.hasNext()) {
+//                    SelectionKey key = it.next();
+//                    it.remove();
+//
+//                    if (!key.isValid()) continue;
+//
+//                    try {
+//                        if (key.isConnectable()) {
+//                            SocketChannel ch = (SocketChannel) key.channel();
+//                            if (ch.finishConnect()) {
+//                                System.out.println("[TCP] finishConnect 完成: " + ch.getRemoteAddress());
+//                                key.interestOps(SelectionKey.OP_READ); // 只监听读
+//                            }
+//                        } else if (key.isReadable()) {
+//                            SocketChannel ch = (SocketChannel) key.channel();
+//                            ByteBuffer in = (ByteBuffer) key.attachment();
+//                            try {
+//                                int n = ch.read(in);
+//                                if (n == -1) {
+//                                    // 对端正常关闭
+//                                    System.out.println("[TCP] 对端关闭连接: " + ch.getRemoteAddress());
+//                                    key.cancel();
+//                                    ch.close();
+//                                    continue;
+//                                }
+//                                if (n == 0) {
+//                                    continue; // 无数据
+//                                }
+//
+//                                // 解析数据
+//                                in.flip();
+//                                while (true) {
+//                                    SIPMessage.Frame f = SIPMessage.tryExtractFrame(in);
+//                                    if (f == null) break;
+//
+//                                    String txt = new String(f.bytes, StandardCharsets.US_ASCII);
+//                                    SIPMessage msg;
+//                                    try {
+//                                        msg = SIPMessage.parse(txt);
+//                                    } catch (Throwable t) {
+//                                        System.err.println("[TCP] 解析失败: " + t);
+//                                        msg = null;
+//                                    }
+//                                    if (msg == null) continue;
+//
+//                                    InetSocketAddress localAddress = (InetSocketAddress) ch.getLocalAddress();
+//                                    msg.setLocalAddress(localAddress);
+//                                    InetSocketAddress remoteAddress = (InetSocketAddress) ch.getRemoteAddress();
+//                                    msg.setExplicitRemote(remoteAddress);
+//
+//                                    if (msg instanceof SipRequest) {
+//                                        scanner.offer(new EventScanner.Item(
+//                                                EventScanner.Kind.REQUEST,
+//                                                new RequestEvent((SipRequest) msg, new TCPMessageChannel(ch), null),
+//                                                provider));
+//                                    } else {
+//                                        scanner.offer(new EventScanner.Item(
+//                                                EventScanner.Kind.RESPONSE,
+//                                                new ResponseEvent((SipResponse) msg),
+//                                                provider));
+//                                    }
+//                                }
+//                                in.compact(); // 继续接收后续数据
+//
+//                            } catch (IOException e) {
+//                                // 对端异常关闭（如强退）
+//                                System.err.println("[TCP] 读异常，关闭连接: " + e);
+//                                key.cancel();
+//                                try {
+//                                    ch.close();
+//                                } catch (Exception ignore) {
+//                                }
+//                            }
+//                        }
+//                    } catch (CancelledKeyException e) {
+//                        System.err.println("[TCP] Key 已取消: " + e);
+//                    }
+//                }
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//        }
+//    }
 
     public Selector selector() {
         return selector;
