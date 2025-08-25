@@ -78,8 +78,8 @@ public abstract class SIPMessage {
             bodyStr = bodyStr.replace("\r\n", "\n").replace("\n", CRLF);
             byte[] normalizedBody = bodyStr.getBytes(BODY_CHARSET);
             headers.put("Content-Length", String.valueOf(normalizedBody.length));
-//          System.out.println("Body bytes length: " + body.length);
-//          System.out.println("Body string re-encoded length: " + bodyStr.getBytes(BODY_CHARSET).length);
+            System.out.println("Body bytes length: " + body.length);
+            System.out.println("Body string re-encoded length: " + bodyStr.getBytes(BODY_CHARSET).length);
 
             for (Map.Entry<String,String> e: headers.entrySet()) {
                 sb.append(e.getKey()).append(": ").append(e.getValue()).append(CRLF);
@@ -399,19 +399,7 @@ public abstract class SIPMessage {
                             originalContentLen + " to " + contentLen);
 
                     // 提取实际的消息体
-                    byte[] body = new byte[contentLen];
-                    buf.get(body);
-
-                    // 构建完整报文（使用实际长度）
-                    byte[] all = new byte[headerBytes.length + 4 + contentLen];
-                    System.arraycopy(headerBytes, 0, all, 0, headerBytes.length);
-                    all[headerBytes.length] = '\r';
-                    all[headerBytes.length + 1] = '\n';
-                    all[headerBytes.length + 2] = '\r';
-                    all[headerBytes.length + 3] = '\n';
-                    System.arraycopy(body, 0, all, headerBytes.length + 4, contentLen);
-
-                    return new Frame(all);
+                    return JoinFrame(buf, headerBytes, contentLen);
                 } else {
                     buf.position(start);
                     return null;
@@ -430,42 +418,35 @@ public abstract class SIPMessage {
 //                            ", Actual: " + actualBodyLength + ", Using actual length.");
 
                     // 提取实际的消息体
-                    byte[] body = new byte[actualBodyLength];
-                    buf.get(body);
-
-                    // 构建完整报文（使用实际长度）
-                    byte[] all = new byte[headerBytes.length + 4 + actualBodyLength];
-                    System.arraycopy(headerBytes, 0, all, 0, headerBytes.length);
-                    all[headerBytes.length] = '\r';
-                    all[headerBytes.length + 1] = '\n';
-                    all[headerBytes.length + 2] = '\r';
-                    all[headerBytes.length + 3] = '\n';
-                    System.arraycopy(body, 0, all, headerBytes.length + 4, actualBodyLength);
-
-                    return new Frame(all);
+                    return JoinFrame(buf, headerBytes, actualBodyLength);
                 } else {
                     // 差异太大，可能是协议错误，按正常逻辑处理
-                    byte[] body = new byte[contentLen];
-                    buf.get(body);
-
-                    // 构建完整报文
-                    byte[] all = new byte[headerBytes.length + 4 + contentLen];
-                    System.arraycopy(headerBytes, 0, all, 0, headerBytes.length);
-                    all[headerBytes.length] = '\r';
-                    all[headerBytes.length + 1] = '\n';
-                    all[headerBytes.length + 2] = '\r';
-                    all[headerBytes.length + 3] = '\n';
-                    System.arraycopy(body, 0, all, headerBytes.length + 4, contentLen);
-
-                    return new Frame(all);
+                    return JoinFrame(buf, headerBytes, contentLen);
                 }
+            }else{ //Content-Length设置和实际发送一致（正常完美情况）
+                return JoinFrame(buf, headerBytes, contentLen);
             }
-            return  null;
         } catch (Exception e) {
             buf.position(start); // 发生异常时回退
             return null;
         }
+    }
 
+    private static Frame JoinFrame(ByteBuffer buf, byte[] headerBytes, int contentLen) {
+        // 提取实际的消息体
+        byte[] body = new byte[contentLen];
+        buf.get(body);
+
+        // 构建完整报文（使用实际长度）
+        byte[] all = new byte[headerBytes.length + 4 + contentLen];
+        System.arraycopy(headerBytes, 0, all, 0, headerBytes.length);
+        all[headerBytes.length] = '\r';
+        all[headerBytes.length + 1] = '\n';
+        all[headerBytes.length + 2] = '\r';
+        all[headerBytes.length + 3] = '\n';
+        System.arraycopy(body, 0, all, headerBytes.length + 4, contentLen);
+
+        return new Frame(all);
     }
 
     /** 宽松解析：允许首部前出现空行；若首行为空（keepalive）返回 null；不对 URI 施加任何约束 */

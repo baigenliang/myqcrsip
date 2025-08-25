@@ -34,6 +34,14 @@ public class UDPMessageProcessor  extends MessageProcessor implements Runnable {
         System.out.println("[UDP] listening " + lp);
     }
 
+    public String getTransport() {
+        return "UDP";
+    }
+
+    public DatagramChannel getDatagramChannel() {
+        return ch;
+    }
+
     @Override
     public void stop() throws Exception {
         running = false;

@@ -63,7 +63,7 @@ public class MyHandler implements HttpHandler {
             int lenghtStr = xml.length();
             Integer lengthStr2 = req.getBody().length;
             req.setTransport("TCP");
-            req.setHost("127.0.0.1");
+            req.setHost("10.120.5.190");
             req.setPort(5061);
             // 或者明确指定远端（不从 URI 解析）：req.setExplicitRemote(new InetSocketAddress("127.0.0.1",5060));
             sipProvider.sendRequest(req);

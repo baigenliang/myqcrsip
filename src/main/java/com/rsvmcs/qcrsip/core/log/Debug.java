@@ -40,7 +40,7 @@ public class Debug {
     static StackLogger stackLogger;
     
     public static void setStackLogger(StackLogger stackLogger) {
-        com.rsvmcs.qcrsip.core.log.Debug.stackLogger = stackLogger;
+       Debug.stackLogger = stackLogger;
     }
 
     public static void println(String s) {

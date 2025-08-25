@@ -42,7 +42,8 @@ public class MyHandlerUdp implements HttpHandler {
             // 或者明确指定远端（不从 URI 解析）：req.setExplicitRemote(new InetSocketAddress("127.0.0.1",5060));
             sipProvider.sendRequest(req);
         } catch (Exception e) {
-
+            e.printStackTrace();
+            System.out.println("handle处理异常"+ e.getMessage());
         }
 
         String response = "sip消息发送完成";

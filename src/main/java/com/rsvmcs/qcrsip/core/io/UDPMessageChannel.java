@@ -13,6 +13,12 @@ import java.util.Map;
 public class UDPMessageChannel {
     private final DatagramChannel channel;
 
+    private UDPMessageProcessor processor;
+
+    public UDPMessageChannel(UDPMessageProcessor processor) {
+        this.processor = processor;
+        this.channel = processor.getDatagramChannel(); // 复用，不再重新 bind
+    }
 
     public UDPMessageChannel(InetSocketAddress local) throws IOException {
 //      this.channel = DatagramChannel.open();
@@ -41,8 +47,9 @@ public class UDPMessageChannel {
     }
 
 
-    public DatagramChannel getChannel(){ return channel; }
-
+    public DatagramChannel getChannel() {
+        return channel;
+    }
 
 
 //    //private final DatagramSocket socket;

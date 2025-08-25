@@ -84,9 +84,17 @@ public class SipProviderImpl implements SipProvider {
             ch.send(dst,data,tcpPool,key,(TCPMessageProcessor)processor);
         } else { // UDP
             String key = keyOf("UDP", dst);
+//            UDPMessageChannel ch = udpPool.computeIfAbsent(key, k -> {
+//                try { return new UDPMessageChannel(new InetSocketAddress(lp.getIp(), lp.getPort())); } catch (Exception e) { throw new RuntimeException(e); }
+//            });
             UDPMessageChannel ch = udpPool.computeIfAbsent(key, k -> {
-                try { return new UDPMessageChannel(new InetSocketAddress(lp.getIp(), 0)); } catch (Exception e) { throw new RuntimeException(e); }
+                try {
+                    return new UDPMessageChannel((UDPMessageProcessor) processor);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             });
+
             ch.send(dst, data);
         }
     }
@@ -105,8 +113,15 @@ public class SipProviderImpl implements SipProvider {
         InetSocketAddress udpPeer = response.getReplyUdpPeer();
         if (udpPeer != null) {
             String key = keyOf("UDP", udpPeer);
-            UDPMessageChannel ch = udpPool.computeIfAbsent(key, k -> {
-                try { return new UDPMessageChannel(new InetSocketAddress(lp.getIp(), 0)); } catch (Exception e) { throw new RuntimeException(e); }
+//            UDPMessageChannel ch = udpPool.computeIfAbsent(key, k -> {
+//                try { return new UDPMessageChannel(new InetSocketAddress(lp.getIp(), 0)); } catch (Exception e) { throw new RuntimeException(e); }
+//            }); //这个是否修改不重要，都能正常发送过去即可
+              UDPMessageChannel ch = udpPool.computeIfAbsent(key, k -> {
+                try {
+                    return new UDPMessageChannel((UDPMessageProcessor) processor);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             });
             ch.send(udpPeer, data);
             return;
@@ -122,8 +137,16 @@ public class SipProviderImpl implements SipProvider {
                 //ch.send(response.getExplicitRemote(),data,tcpPool,key,(TCPMessageProcessor)processor);
                 ch.send(response.getExplicitRemote(),data,tcpPool,key,(TCPMessageProcessor)processor);
             } else {
-                UDPMessageChannel ch = udpPool.computeIfAbsent(keyOf("UDP", response.getExplicitRemote()), k -> {
-                    try { return new UDPMessageChannel(new InetSocketAddress(lp.getIp(), 0)); } catch (Exception e) { throw new RuntimeException(e); }
+//                UDPMessageChannel ch = udpPool.computeIfAbsent(keyOf("UDP", response.getExplicitRemote()), k -> {
+//                    try { return new UDPMessageChannel(new InetSocketAddress(lp.getIp(), 0)); } catch (Exception e) { throw new RuntimeException(e); }
+//                });//这个是否修改不重要，都能正常发送过去即可
+                String key = keyOf("UDP", response.getExplicitRemote());
+                UDPMessageChannel ch = udpPool.computeIfAbsent(key, k -> {
+                    try {
+                        return new UDPMessageChannel((UDPMessageProcessor) processor);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 });
                 ch.send(response.getExplicitRemote(), data);
             }

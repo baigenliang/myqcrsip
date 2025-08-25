@@ -12,6 +12,7 @@ public class ServerLoggerImpl implements ServerLogger {
 
     private boolean showLog = true;
 
+    private SipStack sipStack;
 
     protected StackLogger stackLogger;
 
@@ -78,7 +79,7 @@ public class ServerLoggerImpl implements ServerLogger {
         if (!showLog) {
             return;
         }
-        String TRACE_LEVEL = stackProperties.getProperty("gov.nist.javax.sip.TRACE_LEVEL");
+        String TRACE_LEVEL = stackProperties.getProperty("com.rsvmcs.qcrsip.TRACE_LEVEL");
         if (TRACE_LEVEL != null) {
             showLog = true;
         }
@@ -89,10 +90,12 @@ public class ServerLoggerImpl implements ServerLogger {
         if (!showLog) {
             return;
         }
-//        if(sipStack instanceof SIPTransactionStack) {
-//            this.sipStack = (SIPTransactionStack)sipStack;
-//            this.stackLogger = this.sipStack.getStackLogger();
-//        }
+        this.sipStack=sipStack;
+        this.stackLogger = new StackLoggerImpl();
+//      if(sipStack instanceof SIPTransactionStack) {
+//          this.sipStack = (SIPTransactionStack)sipStack;
+//          this.stackLogger = this.sipStack.getStackLogger();
+//      }
     }
 
 

@@ -188,9 +188,10 @@ public class TCPMessageChannel {
                 Thread.sleep(5);
                 //channel.socket().getOutputStream().flush();
                 System.out.println("[TCP] 首次发送完成, flush() 已调用, 总写入=" + totalWritten);
-            } else {
-                System.out.println("[TCP] 数据发送完成, 总写入=" + totalWritten);
             }
+//            else {
+//                System.out.println("[TCP] 数据发送完成, 总写入=" + totalWritten);
+//            }
             while (buf.hasRemaining()) {
                 int written=channel.write(buf); // 写数据、 阻塞模式一定能写完
                 totalWritten += written;

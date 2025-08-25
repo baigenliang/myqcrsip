@@ -12,8 +12,7 @@ import java.util.Properties;
  *
  */
 public interface ServerLogger extends LogLevels {
-	
-   
+
 	 void closeLogFile();
 	 
 	 void logMessage(SIPMessage message, String from, String to, boolean sender, long time);

@@ -5,6 +5,7 @@ import com.rsvmcs.qcrsip.core.events.RequestEvent;
 import com.rsvmcs.qcrsip.core.events.ResponseEvent;
 import com.rsvmcs.qcrsip.core.events.TimeoutEvent;
 import com.rsvmcs.qcrsip.core.model.*;
+import com.rsvmcs.qcrsip.test.conf.DefaultProperties;
 import com.rsvmcs.qcrsip.test.json.JsonUtils;
 import com.rsvmcs.qcrsip.test.pojo.c2_1.req.BaseReqDto;
 import com.sun.net.httpserver.HttpServer;
@@ -15,6 +16,7 @@ import org.dom4j.io.SAXReader;
 
 import java.io.ByteArrayInputStream;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -101,19 +103,18 @@ public class DemoMainPro {
 //        ((SipStackImpl) stack).stopProvider(tcpProvider);
 //        ((SipStackImpl) stack).stopProvider(udpProvider);
 
-
          // SipProvider tcpProv=  SIPSender.init();
-        SipStack stack = new SipStackImpl();
+        SipStack sipStack = new SipStackImpl();
+      //  SipStack sipStack = (SipStackImpl) SipFactory.getInstance().createSipStack(DefaultProperties.getProperties("QCR5752022_SIP", true));
         try {
-            stack.start();
+            sipStack.start();
         } catch (Exception exception) {
             exception.printStackTrace();
         }
-        ListeningPoint tcpLP = stack.createListeningPoint("127.0.0.1", 5060, "TCP");
-        SipProvider tcpProv = stack.createSipProvider(tcpLP);
-        ListeningPoint udpLP = stack.createListeningPoint("127.0.0.1", 5060, "UDP");
-        SipProvider udpProv = stack.createSipProvider(udpLP);
-
+        ListeningPoint tcpLP = sipStack.createListeningPoint("10.120.5.185", 5060, "TCP");
+        SipProvider tcpProv = sipStack.createSipProvider(tcpLP);
+        ListeningPoint udpLP = sipStack.createListeningPoint("10.120.5.185", 5060, "UDP");
+        SipProvider udpProv = sipStack.createSipProvider(udpLP);
 
         String iplocal=tcpProv.getListeningPoint().getIp();
          // 业务监听器
@@ -202,9 +203,19 @@ public class DemoMainPro {
                 ok.setBody(body.getBytes(SIPMessage.BODY_CHARSET));
 
                 // 沿原通道回发（TCP）
-                if (e.getTcpChannel()!=null) ok.setReplyChannel(e.getTcpChannel());
+                if (e.getTcpChannel()!=null) {
+                    ok.setReplyChannel(e.getTcpChannel());
+                    SocketAddress socketAddress=e.getTcpChannel().getChannel().socket().getRemoteSocketAddress();
+                    System.out.println("[Biz] processResponse:\n " +((InetSocketAddress)socketAddress).getAddress()+"端口"+((InetSocketAddress)socketAddress).getPort());
+
+                }
                 // 如果是 UDP：
-                if(e.getUdpPeer()!=null) ok.setUdpPeer(e.getUdpPeer());
+                if(e.getUdpPeer()!=null) {
+                    ok.setUdpPeer(e.getUdpPeer());
+
+                    System.out.println("[Biz] processResponse:\n " + e.getUdpPeer().getAddress()+ "对端端口："+ e.getUdpPeer().getPort());
+                }
+
 
 
 

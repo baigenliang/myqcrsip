@@ -312,7 +312,7 @@ public class LogWriter implements StackLogger {
                 .getProperty("com.rsvmcs.qcrsip.DEBUG_LOG");
 
         this.stackName = configurationProperties
-                .getProperty("javax.sip.STACK_NAME");
+                .getProperty("com.rsvmcs.qcrsip.STACK_NAME");
 
         //check whether a Log4j logger name has been
         //specified. if not, use the stack name as the default
