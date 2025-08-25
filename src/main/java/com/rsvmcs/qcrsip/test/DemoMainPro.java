@@ -5,16 +5,27 @@ import com.rsvmcs.qcrsip.core.events.RequestEvent;
 import com.rsvmcs.qcrsip.core.events.ResponseEvent;
 import com.rsvmcs.qcrsip.core.events.TimeoutEvent;
 import com.rsvmcs.qcrsip.core.model.*;
+import com.rsvmcs.qcrsip.test.json.JsonUtils;
+import com.rsvmcs.qcrsip.test.pojo.c2_1.req.BaseReqDto;
 import com.sun.net.httpserver.HttpServer;
+import org.dom4j.Document;
+import org.dom4j.DocumentException;
+import org.dom4j.Element;
+import org.dom4j.io.SAXReader;
 
+import java.io.ByteArrayInputStream;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.apache.commons.lang3.ArrayUtils;
 
 public class DemoMainPro {
     public static void main(String[] args) throws Exception {
 //        SipStack stack = new SipStackImpl();
-//
+
 //        // 启动 TCP & UDP 监听（本机 127.0.0.1:5060）
 //        ListeningPoint tcpLP = stack.createListeningPoint("127.0.0.1", 5060, "TCP");
 //        ListeningPoint udpLP = stack.createListeningPoint("127.0.0.1", 5060, "UDP");
@@ -98,9 +109,9 @@ public class DemoMainPro {
         } catch (Exception exception) {
             exception.printStackTrace();
         }
-        ListeningPoint tcpLP = stack.createListeningPoint("10.120.5.185", 5060, "TCP");
+        ListeningPoint tcpLP = stack.createListeningPoint("127.0.0.1", 5060, "TCP");
         SipProvider tcpProv = stack.createSipProvider(tcpLP);
-        ListeningPoint udpLP = stack.createListeningPoint("10.120.5.185", 5060, "UDP");
+        ListeningPoint udpLP = stack.createListeningPoint("127.0.0.1", 5060, "UDP");
         SipProvider udpProv = stack.createSipProvider(udpLP);
 
 
@@ -115,6 +126,16 @@ public class DemoMainPro {
                InetSocketAddress inetSocketAddressRemote=e.getRequest().getExplicitRemote();
 
                String transport= getTransportFromMessage(e.getRequest());
+
+                Element rootElement = null;
+                try {
+                    rootElement = getRootElement(e);
+                } catch (Exception exception) {
+//                responseAck(evt, Response.BAD_REQUEST, e.getMessage());
+                }
+                String jsonStr = XmlUtils.xmlToJson(rootElement);
+                BaseReqDto param = JsonUtils.toBean(jsonStr, BaseReqDto.class);
+                String command = param.getRequest().get_command();
 
                 // 构造 200 OK
                 SipResponse ok = new SipResponse(new StatusLine("SIP/2.0",200,"OK"));
@@ -131,8 +152,6 @@ public class DemoMainPro {
                  if (e.getTcpChannel()!=null) ok.setReplyChannel(e.getTcpChannel());
                 // 如果是 UDP：
                  if(e.getUdpPeer()!=null) ok.setUdpPeer(e.getUdpPeer());
-
-
 
                 try { tcpProv.sendResponse(ok); } catch (Exception ex) { ex.printStackTrace(); }
             }
@@ -160,6 +179,16 @@ public class DemoMainPro {
                 InetSocketAddress inetSocketAddressRemote=e.getRequest().getExplicitRemote();
 
                 String transport= getTransportFromMessage(e.getRequest());
+                Element rootElement = null;
+                try {
+                    rootElement = getRootElement(e);
+                } catch (Exception exception) {
+//                responseAck(evt, Response.BAD_REQUEST, e.getMessage());
+                }
+                String jsonStr = XmlUtils.xmlToJson(rootElement);
+                BaseReqDto param = JsonUtils.toBean(jsonStr, BaseReqDto.class);
+                String command = param.getRequest().get_command();
+
 
                 // 构造 200 OK
                 SipResponse ok = new SipResponse(new StatusLine("SIP/2.0",200,"OK"));
@@ -245,4 +274,45 @@ public class DemoMainPro {
         }
         return null;
     }
+
+    public static Element getRootElement(RequestEvent evt) throws DocumentException {
+        return getRootElement(evt, "gb2312");
+    }
+
+    public static Element getRootElement(RequestEvent evt, String charset) throws DocumentException {
+        if (charset == null) {
+            charset = "gb2312";
+        }
+        SipRequest request = evt.getRequest();
+        SAXReader reader = new SAXReader();
+        reader.setEncoding(charset);
+        // 对海康出现的未转义字符做处理。
+        String[] destStrArray = new String[]{"&lt;", "&gt;", "&amp;", "&apos;", "&quot;"};
+        char despChar = '&'; // 或许可扩展兼容其他字符
+        byte destBye = (byte) despChar;
+        List<Byte> result = new ArrayList<>();
+        byte[] rawContent = request.getBody();
+        for (int i = 0; i < rawContent.length; i++) {
+            if (rawContent[i] == destBye) {
+                boolean resul = false;
+                for (String destStr : destStrArray) {
+                    if (i + destStr.length() <= rawContent.length) {
+                        byte[] bytes = Arrays.copyOfRange(rawContent, i, i + destStr.length());
+                        resul = resul || (Arrays.equals(bytes, destStr.getBytes()));
+                    }
+                }
+                if (resul) {
+                    result.add(rawContent[i]);
+                }
+            } else {
+                result.add(rawContent[i]);
+            }
+        }
+        Byte[] bytes = new Byte[0];
+        byte[] bytesResult = ArrayUtils.toPrimitive(result.toArray(bytes));
+
+        Document xml = reader.read(new ByteArrayInputStream(bytesResult));
+        return xml.getRootElement();
+    }
+
 }

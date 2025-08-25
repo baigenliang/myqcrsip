@@ -119,6 +119,7 @@ public class SipProviderImpl implements SipProvider {
                 TCPMessageChannel ch = tcpPool.computeIfAbsent(key, k -> {
                     try { return TCPMessageChannel.connect(response.getExplicitRemote(),(TCPMessageProcessor)processor); } catch (Exception e) { throw new RuntimeException(e); }
                 });
+                //ch.send(response.getExplicitRemote(),data,tcpPool,key,(TCPMessageProcessor)processor);
                 ch.send(response.getExplicitRemote(),data,tcpPool,key,(TCPMessageProcessor)processor);
             } else {
                 UDPMessageChannel ch = udpPool.computeIfAbsent(keyOf("UDP", response.getExplicitRemote()), k -> {

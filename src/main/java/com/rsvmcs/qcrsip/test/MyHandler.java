@@ -36,10 +36,34 @@ public class MyHandler implements HttpHandler {
             req.setHeader("Call-ID", "abc-123");
             req.setHeader("CSeq", "1 INVITE");
             req.setHeader("Content-Type", "RVSS/xml");
-            String xml = "<?xml version=\"1.0\" encoding=\"GB2312\"?><request command=\"Ping\"><parameters/></request>";
+            // String xml = "<?xml version=\"1.0\" encoding=\"GB2312\"?><request command=\"Ping\"><parameters/></request>";
+//            String xml="<?xml version=\"1.0\" encoding=\"gb2312\"?>\n"+
+//                    "<request command=\"SaRegister\">\n" +
+//                    "    <parameters>\n" +
+//                    "        <expires>300</expires>\n" +
+//                    "        <manufacturerId>QCR-1.33-1.38</manufacturerId>\n" +
+//                    "        <manufacturerName>下级QCR</manufacturerName>\n" +
+//                    "        <productVersion>1.33</productVersion>\n" +
+//                    "        <saId>6400003010000030</saId>\n" +
+//                    "        <saIp>10.120.5.30</saIp>\n" +
+//                    "        <saName>6400003010000030</saName>\n" +
+//                    "        <saPassword>d41d8cd98f00b204e9800998ecf8427e</saPassword>\n" +
+//                    "        <saSipPort>5068</saSipPort>\n" +
+//                    "        <softwareVersion>1.38</softwareVersion>\n" +
+//                    "    </parameters>\n" +
+//                    "</request>\n";
+            String xml = "<?xml version=\"1.0\" encoding=\"GB2312\" standalone=\"yes\"?>\n" +
+                    "<request command=\"GetCuUserId\">\n" +
+                    "    <parameters>\n" +
+                    "        <cuUserName>sbqx</cuUserName>\n" +
+                    "        <cuMac></cuMac>\n" +
+                    "    </parameters>\n" +
+                    "</request>\n";
             req.setBody(xml.getBytes(SIPMessage.BODY_CHARSET));
+            int lenghtStr = xml.length();
+            Integer lengthStr2 = req.getBody().length;
             req.setTransport("TCP");
-            req.setHost("10.120.5.190");
+            req.setHost("127.0.0.1");
             req.setPort(5061);
             // 或者明确指定远端（不从 URI 解析）：req.setExplicitRemote(new InetSocketAddress("127.0.0.1",5060));
             sipProvider.sendRequest(req);

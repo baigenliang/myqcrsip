@@ -131,6 +131,7 @@ public class TCPMessageChannel {
   /**********************支持客户端异常连接断开实时监测和数据发送异常时重连机制*******************************/
     private final SocketChannel channel;
     private boolean firstSend = true; // 标记首次发送
+    private Selector writeSelector; // 专用于写的Selector
 
     public TCPMessageChannel(SocketChannel channel) throws IOException {
         this.channel = channel;
@@ -145,14 +146,15 @@ public class TCPMessageChannel {
       //  ch.configureBlocking(true); // 阻塞模式 为了首次连接后不sleep也能直接成功write发送数据（避免写数据底层缓冲还没ready，只是写入到内核）
         System.out.println("[TCP] 调用 connect()");
         ch.connect(dst);
+
         while (!ch.finishConnect()) {
             System.out.println("[TCP] 等待 finishConnect...");
             try { Thread.sleep(2); } catch (InterruptedException ignored) {}
         }
         System.out.println("[TCP] finishConnect 完成: " + ch.isConnected());
-        ch.socket().setTcpNoDelay(true);
-        ch.socket().setKeepAlive(true);
-       ch.configureBlocking(false); // 建立成功后再切回非阻塞，给 selector 用,否则阻塞模式selector无法收取数据,必须在register前与selector的阻塞模式保持一致
+        //ch.socket().setTcpNoDelay(true);
+        //ch.socket().setKeepAlive(true);
+        ch.configureBlocking(false); // 建立成功后再切回非阻塞，给 selector 用,否则阻塞模式selector无法收取数据,必须在register前与selector的阻塞模式保持一致
         System.out.println("[TCP] 已切换为非阻塞模式");
 
         //注册到 processor 的 selector，统一监听(确保主动发送的连接也能正常响应回来)
@@ -183,7 +185,7 @@ public class TCPMessageChannel {
             // ✅ 首次发送额外 flush，确保底层立即发出
             if (firstSend) {
                 firstSend = false;
-                Thread.sleep(500);
+                Thread.sleep(5);
                 //channel.socket().getOutputStream().flush();
                 System.out.println("[TCP] 首次发送完成, flush() 已调用, 总写入=" + totalWritten);
             } else {
@@ -198,8 +200,6 @@ public class TCPMessageChannel {
                     try { Thread.sleep(5); } catch (InterruptedException ignored) {}
                 }
             }
-
-
         } catch (IOException | InterruptedException e) {
             System.err.println("[TCP] 发送失败: " + e.getMessage());
             if (dst != null && tcpPool != null && key != null) {

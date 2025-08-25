@@ -254,10 +254,13 @@ public class TCPMessageProcessor extends MessageProcessor implements Runnable {
 
                             in.flip();
                             while (true) {
+//                                System.out.println("外部打印处理前: " +
+//                                        new String(in.array(), in.arrayOffset() + in.position(), in.remaining(),
+//                                                java.nio.charset.StandardCharsets.US_ASCII));
                                 SIPMessage.Frame f = SIPMessage.tryExtractFrame(in);
                                 if (f == null) break;
                                 String txt = new String(f.bytes, StandardCharsets.US_ASCII);
-
+                                System.out.println("外部打印处理后："+txt);
                                 SIPMessage msg;
                                 try {
                                     msg = SIPMessage.parse(txt);
